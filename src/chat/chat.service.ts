@@ -12,10 +12,6 @@ export class ChatService {
         @InjectModel(Room.name) private roomModel: Model<Room>,
     ) { }
 
-    async findRoomsForUser(userId: string): Promise<Room[]> {
-        return this.roomModel.find({ participants: userId }).exec();
-    }
-
     async findOne(roomId: string) {
         return this.roomModel.findById(roomId).populate('participants').exec();
     }
@@ -36,6 +32,10 @@ export class ChatService {
         ).exec();
     }
 
+    async findRoomsForUser(userId: string): Promise<Room[]> {
+        return this.roomModel.find({ participants: userId }).exec();
+    }
+    
     async findLastTenMessages(roomId: string): Promise<Message[]> {
         return this.messageModel
             .find({ room: roomId })
