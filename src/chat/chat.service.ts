@@ -1,38 +1,61 @@
 import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Message } from './schemas/message.schema';
+import { Room } from './schemas/room.schema';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class ChatService {
 
-    async getMessage(id: string) {
-        const messages = [
-            {
-                id: '1',
-                content: 'Hello, how are you?',
-                sender: { id: '1', username: 'Abhijeet' },
-                receiver: { id: '2', username: 'Rahul' },
-                timestamp: new Date().toISOString(),
-            },
-            {
-                id: '2',
-                content: 'Hi Abhijeet, I am good. How about you?',
-                sender: { id: '2', username: 'Rahul' },
-                receiver: { id: '1', username: 'Abhijeet' },
-                timestamp: new Date().toISOString(),
-            },
-            {
-                id: '3',
-                content: 'I am doing well, thank you!',
-                sender: { id: '1', username: 'Abhijeet' },
-                receiver: { id: '2', username: 'Rahul' },
-                timestamp: new Date().toISOString(),
-            },
-        ];
-        const msg = messages.find(msg => msg.id === id);
+    constructor(
+        @InjectModel(Message.name) private messageModel: Model<Message>,
+        @InjectModel(Room.name) private roomModel: Model<Room>,
+    ) { }
 
-        if (msg) {
-            return msg;
-        } else {
-            throw new Error('No data available');
-        }
+    async findRoomsForUser(userId: string): Promise<Room[]> {
+        return this.roomModel.find({ participants: userId }).exec();
+    }
+
+    async findOne(roomId: string) {
+        return this.roomModel.findById(roomId).populate('participants').exec();
+    }
+
+    async create(name: string, creatorId: string): Promise<Room> {
+        const newRoom = new this.roomModel({
+            name,
+            participants: [creatorId],
+        });
+        return newRoom.save();
+    }
+
+    async addParticipant(roomId: string, userId: string): Promise<Room> {
+        return this.roomModel.findByIdAndUpdate(
+            roomId,
+            { $addToSet: { participants: userId } },
+            { new: true }
+        ).exec();
+    }
+
+    async findLastTenMessages(roomId: string): Promise<Message[]> {
+        return this.messageModel
+            .find({ room: roomId })
+            .populate('sender')
+            .sort({ timestamp: -1 })
+            .limit(10)
+            .exec();
+    }
+
+    async addMessage(roomId: string, content: string, senderId: string): Promise<Message> {
+        const newMessage = new this.messageModel({
+            content,
+            sender: senderId,
+            room: roomId,
+            timestamp: new Date(),
+        });
+        const message = await newMessage.save();
+
+        await this.roomModel.findByIdAndUpdate(roomId, { lastMessage: message._id });
+
+        return message.populate('sender');
     }
 }

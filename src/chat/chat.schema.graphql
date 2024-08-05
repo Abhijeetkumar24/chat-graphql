@@ -7,14 +7,35 @@ type Message {
   id: ID!
   content: String!
   sender: User!
-  receiver: User!
   timestamp: String!
 }
 
+type Room {
+  id: ID!
+  name: String!
+  lastMessage: Message
+  participants: [ID!]!
+}
+
 type Query {
-  getMessage(id: ID!): Message
+  myProfile: User
+  rooms: [Room!]!
+  messages(roomId: ID!): [Message!]!
+}
+
+type Mutation {
+  login(username: String!, password: String!): LoginResponse!
+  register(username: String!, password: String!): User!
+  addMessage(roomId: ID!, content: String!): Message!
+  createRoom(name: String!): Room!
+  addParticipant(roomId: ID!, userId: ID!): Room!
+}
+
+type LoginResponse {
+  access_token: String!
 }
 
 schema {
   query: Query
+  mutation: Mutation
 }
